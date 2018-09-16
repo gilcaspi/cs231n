@@ -133,8 +133,10 @@ class TwoLayerNet(object):
     # ReLU = max(x, 0) => dReLU/dx = 1(x > 0)
     dhidden = np.dot(dscores, W2.T)
     dhidden[dhidden <= 0] = 0
+    # dhidden[dhidden > 0] = 1
 
     # dL/dW1 = (dL/dhidden) * (dhidden / dX)
+
     dW1 = np.dot(X.T, dhidden)
     db1 = np.sum(dhidden, axis=0, keepdims=True)
 
