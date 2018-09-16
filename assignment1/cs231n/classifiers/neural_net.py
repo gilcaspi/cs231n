@@ -3,6 +3,9 @@ from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
 
+def softmax(z):
+  return np.exp(z) / np.sum(np.exp(z))
+
 class TwoLayerNet(object):
   """
   A two-layer fully-connected neural network. The net has an input dimension of
@@ -75,7 +78,9 @@ class TwoLayerNet(object):
     # Store the result in the scores variable, which should be an array of      #
     # shape (N, C).                                                             #
     #############################################################################
-    pass
+    v1 = X.dot(W1) + b1  # linear output of hidden layer (N x H)
+    o_hidden = np.maximum(0, v1)  # ReLU activation function of hidden layer (dim: H) (N x H)
+    scores = o_hidden.dot(W2) + b2  # output layer (dim: C) (N x C)
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -92,7 +97,17 @@ class TwoLayerNet(object):
     # in the variable loss, which should be a scalar. Use the Softmax           #
     # classifier loss.                                                          #
     #############################################################################
-    pass
+    # L = (1/N) sum(-scores(y_i) + log(sum(exp(scores))) + reg * sum(W * W)
+
+    # we exponential the scores and normalize them to probabilities  in range [0,1]
+    exp_scores = np.exp(scores)
+    probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+
+    correct_log_probs = -np.log(probs[range(N), y])  # the log probabilities of the right classes for each example
+    data_loss = np.sum(correct_log_probs) / N
+    reg_loss = reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
+
+    loss = data_loss + reg_loss
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -104,7 +119,29 @@ class TwoLayerNet(object):
     # and biases. Store the results in the grads dictionary. For example,       #
     # grads['W1'] should store the gradient on W1, and be a matrix of same size #
     #############################################################################
-    pass
+    # calculating the dL/df
+    dscores = probs
+    # full explanation : http://cs231n.github.io/neural-networks-case-study/
+    # in each example we decrease the score of the right class by 1
+    dscores[range(N), y] -= 1  # dL/df = p_k -1(y_i = k)
+    dscores /= N  # normalization
+
+    # dL/dW2 = (dL/dz) * (dz/dW2)
+    dW2 = np.dot(o_hidden.T, dscores)
+    db2 = np.sum(dscores, axis=0, keepdims=True)
+
+    # ReLU = max(x, 0) => dReLU/dx = 1(x > 0)
+    dhidden = np.dot(dscores, W2.T)
+    dhidden[dhidden <= 0] = 0
+
+    # dL/dW1 = (dL/dhidden) * (dhidden / dX)
+    dW1 = np.dot(X.T, dhidden)
+    db1 = np.sum(dhidden, axis=0, keepdims=True)
+
+    grads['W1'] = dW1 + 2 * reg * W1
+    grads['b1'] = db1
+    grads['W2'] = dW2 + 2 * reg * W2
+    grads['b2'] = db2
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
